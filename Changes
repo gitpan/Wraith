@@ -1,0 +1,6 @@
+Revision history for Perl extension Wraith.
+
+0.01  Sun Sep  8 18:44:49 2013
+	- original version; created by h2xs 1.23 with options
+		-AX Wraith
+
