@@ -119,4 +119,4 @@ LICENSE
     under the same terms as Perl itself.
 
 SEE ALSO
-    Parser::Combinator, which implements parsec-like parser combinators.
+    Parser::Combinators, which implements parsec-like parser combinators.

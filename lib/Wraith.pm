@@ -3,7 +3,7 @@ use warnings;
 
 require Exporter;
 
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 
 {
     package Wraith;
@@ -337,7 +337,7 @@ Copyright 2013 - Bo Wang
 
 =head1 SEE ALSO
 
-Parser::Combinator, which implements parsec-like parser combinators.
+Parser::Combinators, which implements parsec-like parser combinators.
 
 =head1 LICENSE
 
