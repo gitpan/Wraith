@@ -5,21 +5,21 @@ SYNOPSIS
         use Wraith;
 
         my ($expn, $term, $factor, $num);
-        wraith_rule->makerules(\$expn, \$term, \$factor, \$num);
+        Wraith_rule->makerules(\$expn, \$term, \$factor, \$num);
 
-        $expn = ( (\$term >> $wraith::token->('\+') >> \$expn) ** sub { [ $_[0]->[0] + $_[0]->[2] ] } ) |
-                ( (\$term >> $wraith::token->('-') >> \$expn) ** sub { [ $_[0]->[0] - $_[0]->[2] ] } ) |
+        $expn = ( (\$term >> $Wraith::token->('\+') >> \$expn) ** sub { [ $_[0]->[0] + $_[0]->[2] ] } ) |
+                ( (\$term >> $Wraith::token->('-') >> \$expn) ** sub { [ $_[0]->[0] - $_[0]->[2] ] } ) |
                 ( \$term );
 
-        $term = ( (\$factor >> $wraith::token->('\*') >> \$term) ** sub { [ $_[0]->[0] * $_[0]->[2] ] } ) |
-                ( (\$factor >> $wraith::token->('\/') >> \$term) **
+        $term = ( (\$factor >> $Wraith::token->('\*') >> \$term) ** sub { [ $_[0]->[0] * $_[0]->[2] ] } ) |
+                ( (\$factor >> $Wraith::token->('\/') >> \$term) **
                     sub { $_[0]->[2] ? [ $_[0]->[0] / $_[0]->[2] ] : [] } ) |
                 ( \$factor );
 
         $factor = ( (\$num) ** sub { my $args = $_[0]; my $val = undef; for my $elt (@$args) { $val .= $elt; } [ $val ] } ) |
-                  ( ( $wraith::token->('\(') >> \$expn >> $wraith::token->('\)') ) ** sub { my $args = $_[0]; [ $args->[1] ] } );
+                  ( ( $Wraith::token->('\(') >> \$expn >> $Wraith::token->('\)') ) ** sub { my $args = $_[0]; [ $args->[1] ] } );
 
-        $num = $wraith::token->('[1-9][0-9]*');
+        $num = $Wraith::token->('[1-9][0-9]*');
 
         print $expn->('2 + (4 - 1) * 3 + 4 -2')->[0]->[0]->[0], "\n";
 
