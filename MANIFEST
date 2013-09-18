@@ -1,8 +1,11 @@
 Changes
+lib/Wraith.pm
 Makefile.PL
 MANIFEST
 README
-t/Wraith.t
-lib/Wraith.pm
+t/*.t
+t/basic.t
+t/lc2pl.t
+Wraith-0.07.tar.gz
 META.yml                                 Module YAML meta-data (added by MakeMaker)
 META.json                                Module JSON meta-data (added by MakeMaker)
