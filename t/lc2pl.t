@@ -126,9 +126,9 @@ ok(scalar @astlist eq 1);
 
 for my $itr (@{$astlist[0]}) {
     if ($itr->{"kind"} eq "term") {
-        push $expr_root{"term"}, $itr;
+        push @{$expr_root{"term"}}, $itr;
     } else {
-        push $expr_root{"defn"}, $itr;
+        push @{$expr_root{"defn"}}, $itr;
     }
 }
 

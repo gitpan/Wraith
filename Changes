@@ -27,3 +27,6 @@ Revision history for Perl extension Wraith.
 
 0.09  Fri Sep  20 11:48:52 2013
     - Remove perl version dependency.
+
+0.10  Fri Sep  20 14:11:33 2013
+    - Update test lc2pl.t for perl 5.14 or lower.
