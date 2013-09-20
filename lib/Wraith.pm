@@ -3,7 +3,7 @@ use warnings;
 
 require Exporter;
 
-our $VERSION = 0.08;
+our $VERSION = 0.09;
 
 {
     package Wraith;

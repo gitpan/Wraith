@@ -24,3 +24,6 @@ Revision history for Perl extension Wraith.
 
 0.08  Wes Sep  18 15:56:09 2013
     - Fixed typos in readme.
+
+0.09  Fri Sep  20 11:48:52 2013
+    - Remove perl version dependency.
