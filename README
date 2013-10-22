@@ -2,26 +2,72 @@ NAME
     Wraith - Parser Combinator in Perl
 
 SYNOPSIS
-        use Wraith;
+        use Wraith qw ( $succeed $many $token );
 
-        my ($expn, $term, $factor, $num);
-        Wraith_rule->makerules(\$expn, \$term, \$factor, \$num);
+        my ($E, $Etail, $T, $Ttail, $F, $num);
+        Wraith_rule->makerules(\$E, \$Etail, \$T, \$Ttail, \$F, \$num);
 
-        $expn = ( (\$term >> $Wraith::token->('\+') >> \$expn) ** sub { [ $_[0]->[0] + $_[0]->[2] ] } ) |
-                ( (\$term >> $Wraith::token->('-') >> \$expn) ** sub { [ $_[0]->[0] - $_[0]->[2] ] } ) |
-                ( \$term );
+        $E = ((\$T) >> (\$Etail)) ** sub { my ($tval, $etval) = @{$_[0]}; if ($etval) { return [ $etval->($tval) ]; } else { return [ $tval ] } };
+        $Etail = (
+                    ( $token->('\+') >> (\$T) >> (\$Etail) ) **
+                    sub { 
+                        my ($discard, $tval, $etval) = @{$_[0]};
+                        if ($etval) {
+                            return [ sub { $_[0] + $etval->($tval) } ];
+                        } else {
+                            return [ sub { $_[0] + $tval } ];
+                        }
+                    }
+                 ) |
+                 (
+                    ( $token->('-') >> (\$T) >> (\$Etail) ) **
+                    sub { 
+                        my ($discard, $tval, $etval) = @{$_[0]};
+                        if ($etval) {
+                            return [ sub { $_[0] - $etval->($tval) } ];
+                        } else {
+                            return [ sub { $_[0] - $tval } ];
+                        }
+                    }
+                 ) |
+                 $succeed->( [] );
+        $T = ((\$F) >> (\$Ttail)) ** sub { my ($fval, $ttval) = @{$_[0]}; if ($ttval) { return [ $ttval->($fval) ]; } else { return [ $fval ] } };
+        $Ttail = (
+                    ( $token->('\*') >> (\$F) >> (\$Ttail) ) **
+                    sub { 
+                        my ($discard, $fval, $ttval) = @{$_[0]};
+                        if ($ttval) {
+                            return [ sub { $ttval->($_[0] * $fval) } ];
+                        } else {
+                            return [ sub { $_[0] * $fval } ];
+                        }
+                    }
+                 ) |
+                 (
+                    ( $token->('\/') >> (\$F) >> (\$Ttail) ) **
+                    sub { 
+                        my ($discard, $fval, $ttval) = @{$_[0]};
+                        if ($ttval) {
+                            return [ sub { 
+                                         if ($fval) { 
+                                             return $ttval->($_[0] / $fval);
+                                         } else { 
+                                             return $_[0]; 
+                                         } 
+                                     } 
+                                   ];
+                        } else {
+                            return [ sub { if ($fval) { return $_[0] / $fval; } else { return $_[0] } } ];
+                        }
+                    }
+                 ) |
+                 $succeed->( [] );
+        $F = ( ( $token->('\(') >> (\$E) >> $token->('\)') ) ** sub { [ $_[0]->[1] ] } ) |
+             (\$num);
+        $num = $token->('[1-9][0-9]*');
 
-        $term = ( (\$factor >> $Wraith::token->('\*') >> \$term) ** sub { [ $_[0]->[0] * $_[0]->[2] ] } ) |
-                ( (\$factor >> $Wraith::token->('\/') >> \$term) **
-                    sub { $_[0]->[2] ? [ $_[0]->[0] / $_[0]->[2] ] : [] } ) |
-                ( \$factor );
-
-        $factor = ( (\$num) ** sub { my $args = $_[0]; my $val = undef; for my $elt (@$args) { $val .= $elt; } [ $val ] } ) |
-                  ( ( $Wraith::token->('\(') >> \$expn >> $Wraith::token->('\)') ) ** sub { my $args = $_[0]; [ $args->[1] ] } );
-
-        $num = $Wraith::token->('[1-9][0-9]*');
-
-        print $expn->('2 + (4 - 1) * 3 + 4 -2')->[0]->[0]->[0], "\n";
+        print $E->('1 + 13 / 2 * 3 + 2 * (2 + 3)')->[0]->[0]->[0], "\n";
+        print $E->('2 * 3')->[0]->[0]->[0], "\n";
 
 DESCRIPTION
     Wraith is a simple parser combinator library (not monadic nor memoized) inspired
@@ -46,7 +92,7 @@ DESCRIPTION
   $fail
     It takes an argument, discards it and return an empty list.
 
-    Those two operators are rarely used. Use them if you need new combinators.
+    Those two operators are rarely used. Use them if you need new combinators or empty matches.
 
   $literal
     It takes one character as the only argument. The returned function match the first 

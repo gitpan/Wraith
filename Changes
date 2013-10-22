@@ -30,3 +30,6 @@ Revision history for Perl extension Wraith.
 
 0.10  Fri Sep  20 14:11:33 2013
     - Update test lc2pl.t for perl 5.14 or lower.
+
+0.11  Tue Oct  22 08:41:03 2013
+    - Fixed SYNOPSIS sample language. 

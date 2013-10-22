@@ -3,7 +3,7 @@ use warnings;
 
 require Exporter;
 
-our $VERSION = 0.10;
+our $VERSION = 0.11;
 
 {
     package Wraith;
@@ -40,8 +40,7 @@ our $VERSION = 0.10;
         @args
     }
 
-    our $concat =
-    sub {
+    sub concat_impl {
         my @list_of_lists = @_;
         my @list;
 
@@ -50,10 +49,9 @@ our $VERSION = 0.10;
         }
         \@list
     };
+    our $concat = \&concat_impl;
 
-    our $succeed = 
-    bless
-    sub {
+    sub succeed_impl {
         my $v = $_[0];
         bless
         sub {
@@ -61,16 +59,14 @@ our $VERSION = 0.10;
             [ [ $u, $_[0] ] ]
         }
     };
+    our $succeed = bless \&succeed_impl;
 
-    our $fail = 
-    bless
-    sub {
+    sub fail_impl {
         []
     };
+    our $fail = bless \&fail_impl;
 
-    our $satisfy = 
-    bless
-    sub {
+    sub satisfy_impl {
         my ($p, $m) = @_;
         $m = sub { $_[0] =~ /(.)(.*)/s } if not $m;
         bless
@@ -86,10 +82,9 @@ our $VERSION = 0.10;
             }
         }
     };
+    our $satisfy = bless \&satisfy_impl;
 
-    our $literal = 
-    bless
-    sub {
+    sub literal_impl {
         my $y = $_[0];
         $satisfy->( 
             sub { 
@@ -97,10 +92,9 @@ our $VERSION = 0.10;
             }
         )
     };
+    our $literal = bless \&literal_impl;
 
-    our $literals = 
-    bless
-    sub {
+    sub literals_impl {
         my $y = $_[0];
         $satisfy->(
             sub {
@@ -108,10 +102,9 @@ our $VERSION = 0.10;
             }
         )
     };
+    our $literals = bless \&literals_impl;
 
-    our $token =
-    bless 
-    sub {
+    sub token_impl {
         my ($tok, $skip) = @_;
         $skip = '\s*' if not $skip;
         $satisfy->(
@@ -121,6 +114,7 @@ our $VERSION = 0.10;
             }
         )
     };
+    our $token = bless \&token_impl;
 
     sub alt_impl {
         my ($p1_, $p2_, $discard) = @_;
@@ -210,26 +204,72 @@ Wraith - Parser Combinator in Perl
 =head1 SYNOPSIS
 
 
-    use Wraith;
+    use Wraith qw ( $succeed $many $token );
 
-    my ($expn, $term, $factor, $num);
-    Wraith_rule->makerules(\$expn, \$term, \$factor, \$num);
+    my ($E, $Etail, $T, $Ttail, $F, $num);
+    Wraith_rule->makerules(\$E, \$Etail, \$T, \$Ttail, \$F, \$num);
 
-    $expn = ( (\$term >> $Wraith::token->('\+') >> \$expn) ** sub { [ $_[0]->[0] + $_[0]->[2] ] } ) |
-            ( (\$term >> $Wraith::token->('-') >> \$expn) ** sub { [ $_[0]->[0] - $_[0]->[2] ] } ) |
-            ( \$term );
+    $E = ((\$T) >> (\$Etail)) ** sub { my ($tval, $etval) = @{$_[0]}; if ($etval) { return [ $etval->($tval) ]; } else { return [ $tval ] } };
+    $Etail = (
+                ( $token->('\+') >> (\$T) >> (\$Etail) ) **
+                sub { 
+                    my ($discard, $tval, $etval) = @{$_[0]};
+                    if ($etval) {
+                        return [ sub { $_[0] + $etval->($tval) } ];
+                    } else {
+                        return [ sub { $_[0] + $tval } ];
+                    }
+                }
+             ) |
+             (
+                ( $token->('-') >> (\$T) >> (\$Etail) ) **
+                sub { 
+                    my ($discard, $tval, $etval) = @{$_[0]};
+                    if ($etval) {
+                        return [ sub { $_[0] - $etval->($tval) } ];
+                    } else {
+                        return [ sub { $_[0] - $tval } ];
+                    }
+                }
+             ) |
+             $succeed->( [] );
+    $T = ((\$F) >> (\$Ttail)) ** sub { my ($fval, $ttval) = @{$_[0]}; if ($ttval) { return [ $ttval->($fval) ]; } else { return [ $fval ] } };
+    $Ttail = (
+                ( $token->('\*') >> (\$F) >> (\$Ttail) ) **
+                sub { 
+                    my ($discard, $fval, $ttval) = @{$_[0]};
+                    if ($ttval) {
+                        return [ sub { $ttval->($_[0] * $fval) } ];
+                    } else {
+                        return [ sub { $_[0] * $fval } ];
+                    }
+                }
+             ) |
+             (
+                ( $token->('\/') >> (\$F) >> (\$Ttail) ) **
+                sub { 
+                    my ($discard, $fval, $ttval) = @{$_[0]};
+                    if ($ttval) {
+                        return [ sub { 
+                                     if ($fval) { 
+                                         return $ttval->($_[0] / $fval);
+                                     } else { 
+                                         return $_[0]; 
+                                     } 
+                                 } 
+                               ];
+                    } else {
+                        return [ sub { if ($fval) { return $_[0] / $fval; } else { return $_[0] } } ];
+                    }
+                }
+             ) |
+             $succeed->( [] );
+    $F = ( ( $token->('\(') >> (\$E) >> $token->('\)') ) ** sub { [ $_[0]->[1] ] } ) |
+         (\$num);
+    $num = $token->('[1-9][0-9]*');
 
-    $term = ( (\$factor >> $Wraith::token->('\*') >> \$term) ** sub { [ $_[0]->[0] * $_[0]->[2] ] } ) |
-            ( (\$factor >> $Wraith::token->('\/') >> \$term) **
-                sub { $_[0]->[2] ? [ $_[0]->[0] / $_[0]->[2] ] : [] } ) |
-            ( \$factor );
-
-    $factor = ( (\$num) ** sub { my $args = $_[0]; my $val = undef; for my $elt (@$args) { $val .= $elt; } [ $val ] } ) |
-              ( ( $Wraith::token->('\(') >> \$expn >> $Wraith::token->('\)') ) ** sub { my $args = $_[0]; [ $args->[1] ] } );
-
-    $num = $Wraith::token->('[1-9][0-9]*');
-
-    print $expn->('2 + (4 - 1) * 3 + 4 -2')->[0]->[0]->[0], "\n";
+    print $E->('1 + 13 / 2 * 3 + 2 * (2 + 3)')->[0]->[0]->[0], "\n";
+    print $E->('2 * 3')->[0]->[0]->[0], "\n";
 
 =head1 DESCRIPTION
 
@@ -257,7 +297,7 @@ the analysis result and the second parameter is the unprocessed input string.
 
 It takes an argument, discards it and return an empty list.
 
-Those two operators are rarely used. Use them if you need new combinators.
+Those two operators are rarely used. Use them if you need new combinators or empty matches.
 
 =head3 reference $literal
 
