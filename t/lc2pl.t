@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 4;
+use Test::More;
 use Wraith qw ( $many $token );
 
 # test case: a lambda-calculus-to-perl translator
@@ -151,3 +151,5 @@ print "# termlist: \n";
 for my $termitr (@$termlist) {
     ok(emitterm($termitr) eq shift @terms);
 }
+
+done_testing();

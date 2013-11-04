@@ -33,3 +33,9 @@ Revision history for Perl extension Wraith.
 
 0.11  Tue Oct  22 08:41:03 2013
     - Fixed SYNOPSIS sample language. 
+
+0.12  Mon Nov  04 08:12:50 2013
+    - Refactored SYNOPSIS sample language.
+    - Added experimental greedy kleene star.
+    - Added optional phrase operator.
+    - Export operator satisfy.

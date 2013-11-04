@@ -2,72 +2,53 @@ NAME
     Wraith - Parser Combinator in Perl
 
 SYNOPSIS
-        use Wraith qw ( $succeed $many $token );
+        use strict;
+        use warnings;
+        use Wraith qw ( $many $token );
 
         my ($E, $Etail, $T, $Ttail, $F, $num);
         Wraith_rule->makerules(\$E, \$Etail, \$T, \$Ttail, \$F, \$num);
 
-        $E = ((\$T) >> (\$Etail)) ** sub { my ($tval, $etval) = @{$_[0]}; if ($etval) { return [ $etval->($tval) ]; } else { return [ $tval ] } };
-        $Etail = (
-                    ( $token->('\+') >> (\$T) >> (\$Etail) ) **
-                    sub { 
-                        my ($discard, $tval, $etval) = @{$_[0]};
-                        if ($etval) {
-                            return [ sub { $_[0] + $etval->($tval) } ];
-                        } else {
-                            return [ sub { $_[0] + $tval } ];
-                        }
-                    }
-                 ) |
-                 (
-                    ( $token->('-') >> (\$T) >> (\$Etail) ) **
-                    sub { 
-                        my ($discard, $tval, $etval) = @{$_[0]};
-                        if ($etval) {
-                            return [ sub { $_[0] - $etval->($tval) } ];
-                        } else {
-                            return [ sub { $_[0] - $tval } ];
-                        }
-                    }
-                 ) |
-                 $succeed->( [] );
-        $T = ((\$F) >> (\$Ttail)) ** sub { my ($fval, $ttval) = @{$_[0]}; if ($ttval) { return [ $ttval->($fval) ]; } else { return [ $fval ] } };
-        $Ttail = (
-                    ( $token->('\*') >> (\$F) >> (\$Ttail) ) **
-                    sub { 
-                        my ($discard, $fval, $ttval) = @{$_[0]};
-                        if ($ttval) {
-                            return [ sub { $ttval->($_[0] * $fval) } ];
-                        } else {
-                            return [ sub { $_[0] * $fval } ];
-                        }
-                    }
-                 ) |
-                 (
-                    ( $token->('\/') >> (\$F) >> (\$Ttail) ) **
-                    sub { 
-                        my ($discard, $fval, $ttval) = @{$_[0]};
-                        if ($ttval) {
-                            return [ sub { 
-                                         if ($fval) { 
-                                             return $ttval->($_[0] / $fval);
-                                         } else { 
-                                             return $_[0]; 
-                                         } 
-                                     } 
-                                   ];
-                        } else {
-                            return [ sub { if ($fval) { return $_[0] / $fval; } else { return $_[0] } } ];
-                        }
-                    }
-                 ) |
-                 $succeed->( [] );
-        $F = ( ( $token->('\(') >> (\$E) >> $token->('\)') ) ** sub { [ $_[0]->[1] ] } ) |
-             (\$num);
-        $num = $token->('[1-9][0-9]*');
+        sub calclist {
+            my $tag = shift;
+            sub {
+                my ($car, @cdr) = @{$_[0]};
+                for my $elt (@cdr) {
+                    $car = $elt->($car);
+                }
+                [ $car ]
+            }
+        }
 
-        print $E->('1 + 13 / 2 * 3 + 2 * (2 + 3)')->[0]->[0]->[0], "\n";
-        print $E->('2 * 3')->[0]->[0]->[0], "\n";
+        sub buildelt {
+            my $tag = shift;
+            sub {
+                my ($binop, $operand) = @{$_[0]};
+                my %opdict = (
+                    '+' => sub { $_[0] + $operand },
+                    '-' => sub { $_[0] - $operand },
+                    '*' => sub { $_[0] * $operand },
+                    '/' => sub { ($operand) ? ($_[0] / $operand) : ($_[0]) }
+                );
+                [ $opdict{$binop} ]
+            }
+        }
+
+        sub identity {
+            my $tag = shift;
+            sub {
+                $_[0]
+            }
+        }
+
+        $E = ((\$T) >> $many->(\$Etail)) ** (calclist("E"));
+        $Etail = ($token->('[+-]') >> (\$T)) ** (buildelt("Etail"));
+        $T = ((\$F) >> $many->(\$Ttail)) ** (calclist("T"));
+        $Ttail = ($token->('[\/*]') >> (\$F)) ** (buildelt("Ttail"));
+        $F = (($token->('\(') >> (\$E) >> $token->('\)')) ** sub { [ $_[0]->[1] ] } ) | ((\$num) ** (identity("F")));
+        $num = $token->('[1-9][0-9]*') ** (identity("num"));
+
+        print $E->('1 + 13 / 2 * 3 + 2 * (2 + 3) + 2 * 3')->[0]->[0]->[0], "\n";
 
 DESCRIPTION
     Wraith is a simple parser combinator library (not monadic nor memoized) inspired
@@ -92,7 +73,15 @@ DESCRIPTION
   $fail
     It takes an argument, discards it and return an empty list.
 
-    Those two operators are rarely used. Use them if you need new combinators or empty matches.
+  $satisfy
+
+    Operator Satisfy takes two functions as arguments. The first one is a predicate which
+    gives the judgement whether matching is successful. The second and optional one is
+    used to split the input string into matched token and remaining stream. $satisfy uses
+
+            sub { $_[0] =~ /(.)(.*)/s }
+
+as the default value of the second parameter.
 
   $literal
     It takes one character as the only argument. The returned function match the first 
@@ -141,6 +130,16 @@ DESCRIPTION
   $many
     Kleene star combinator. The argument combinator will be matched at least zero time.
     The returned value is a list of all possible matchings.
+
+  $many_g
+
+    Greedy Kleene star combinator. The argument combinator will be matched at least zero time.
+    The returned value is a list of the longest matching.
+    This feature is experimental. Use only in unambiguous languages.
+
+  $opt
+
+    $opt matches at most one symbol represented by the argument parser.
     
     Rules:
     
